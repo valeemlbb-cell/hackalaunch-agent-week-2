@@ -1,14 +1,70 @@
-# Submission text — Agent Week (hackalaunch.com/h/agent-week-2)
+# SUBMISSION — Agent Week (hackalaunch.com/h/agent-week-2)
 
-Paste the block below into the submission description. Replace
-`<GITHUB_URL>` with the URL from `gh repo create` (see RUN.md).
+## Form fields
+
+| Field | Value |
+|---|---|
+| Project name | **agentproof** |
+| Public GitHub repository | `https://github.com/valeemlbb-cell/hackalaunch-agent-week-2` |
+| Demo video (public link) | `<DEMO_URL>` — upload `demo_small.mp4` (720p, 3.4 MB, 2:01) to X @issue0x or YouTube, then paste the link |
+| Short description | the block under **Description** below |
+| Solana payout address | `7W31iaCmjerN1jkpEnmZevn74SZxv83yEQvLsnc4PS7Q` |
+
+Local artefacts: `D:\warung-ops\hacka\agent-week-2\demo.mp4` (1080p, 10.6 MB, committed),
+`demo_small.mp4` (720p, 3.4 MB — under X's upload limit; runtime 121 s is under X's
+2 min 20 s non-premium cap).
+
+## One-paragraph description
+
+agentproof gives an AI agent two things its own log can never give it: a gate
+that a human has to open before the agent spends money, sends mail, publishes,
+touches credentials or deletes anything, and a receipt of what it actually did
+that nobody — including the operator — can quietly edit afterwards. Every
+intent, approval, refusal and execution is sealed into an append-only hash
+chain; batches are summarised by a Merkle root and that root is written to
+Solana as an SPL Memo, so re-deriving the root from the file on disk and
+comparing it with the chain turns "trust my log" into a check anyone can run.
+
+## Built during the hackathon vs before
+
+**During Agent Week (everything in the repo):** the hash-chain ledger, the
+canonical event encoding, the Merkle tree and inclusion proofs, the policy
+engine and approval gate, the offline auditor, the Solana anchor/verify path,
+the CLI, the localhost approval dashboard, 43 tests, README, and the demo.
+
+**Before the hackathon (NOT in the repo, not imported):** our in-house clip
+pipeline at `D:\warung-ops`, which is only the *story* behind
+`examples/warung-agent-demo.js` — that example is a small standalone script
+written during the hackathon that mimics the pipeline's seven steps. No
+pre-hackathon code, assets or dependencies were copied in.
+
+## Requirements, point by point
+
+| Requirement | How it is met |
+|---|---|
+| Public GitHub repository | `https://github.com/valeemlbb-cell/hackalaunch-agent-week-2`, MIT licence, README at root |
+| Demo video ≤ 3 minutes | 2:01, 1080p, English voice-over, real terminal + real dashboard, no slides |
+| Description | above |
+| An agent-related build | the project exists only to make agent actions gateable and auditable; the demo drives a seven-step agent run |
+| Solana | anchoring writes a Merkle root to Solana via SPL Memo (`MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`); `verify --online` reads it back |
+| Devnet only, no mainnet money | the RPC endpoint is checked and any non-devnet/testnet/localnet URL is refused; a test covers the refusal |
+| No secrets in the repo | `.env.example` only; `.gitignore` blocks `*keypair*.json`, `id.json`, `*.pem`, `*.key`, `.env` |
+| No admin backdoor | there is no override path around the gate; the offline auditor re-checks the gate from the raw file, so a patched runtime still leaves a provable `ungated_execution` violation |
+| Human approval on anything outbound | `spend`, `outbound`, `publish`, `credential`, `destructive` are gated by default and unknown kinds fail closed |
+| Licensing | MIT; no bundled fonts or art |
+| AI disclosure | stated in the README and in the description |
+
+## Description (paste this into the form)
+
+Replace `<DEMO_URL>` with the public video link before pasting.
 
 ---
 
 **agentproof — tamper-evident receipts and a human-approval gate for AI agents, anchored on Solana devnet**
 
-Repo: <GITHUB_URL>
-Demo: 2:01, `demo.mp4` in the repo root
+Repo: https://github.com/valeemlbb-cell/hackalaunch-agent-week-2
+Demo: <DEMO_URL> (2:01)
+Payout: 7W31iaCmjerN1jkpEnmZevn74SZxv83yEQvLsnc4PS7Q
 Licence: MIT
 
 An agent that can spend money, send email and post publicly writes its own log
