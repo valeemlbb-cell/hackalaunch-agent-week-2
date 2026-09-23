@@ -1,3 +1,56 @@
+<!-- generated-header v2 -->
+# SUBMISSION — agent-week-2
+
+Paste-ready. Five fields, in the order the HackaLaunch form asks for them.
+Refreshed 2026-09-24T05:06:10+07:00.
+
+---
+
+## TITLE  (75/80 chars)
+
+```
+agentproof — tamper-evident receipts and a human gate for autonomous agents
+```
+
+## DESCRIPTION  (1493 chars)
+
+```
+agentproof makes an AI agent's own log unforgeable and puts a human in front of anything that spends, sends, publishes or deletes.
+
+What it does: an agent that can move money and post publicly produces a log the agent itself writes. If it is buggy, jailbroken or simply lying, that log is a text file it can rewrite. agentproof adds two things: a gate that refuses in the execution path, not a polite instruction, and a receipt nobody — including the operator — can quietly edit.
+
+How it works: every action the agent takes appends to a hash-chained ledger (intent → gated → approval → execution). Gated intents throw ApprovalRequiredError at execute time and stay stuck until a named human approves. Periodically the Merkle root of the ledger is anchored on chain as an SPL Memo transaction. Afterwards an offline audit walks the log, recomputes the chain and the root, and compares against the anchored signature — so editing any past entry is detectable without trusting the operator's copy.
+
+Real vs mocked: real. Verified end to end against a real Solana validator — localnet, because the public devnet faucet returned 429 for the whole build window; the README says so under Verification status rather than implying devnet. The gate, the chain, the anchor and the tamper detection are all exercised by `examples/localnet-roundtrip.sh`, which anchors, reads back, tampers and shows the catch in about a minute.
+
+How to run: `npm install && npm test` (48 tests), then the roundtrip script.
+```
+
+## REPO URL
+
+```
+https://github.com/valeemlbb-cell/hackalaunch-agent-week-2
+```
+
+## VIDEO URL
+
+```
+VIDEO_URL_PENDING
+```
+
+> The main session posts `demo_x.mp4` from this folder to X and replaces the
+> line above with the public post URL. The form needs a **link**; a file is useless.
+
+## SOLANA PAYOUT ADDRESS
+
+```
+7W31iaCmjerN1jkpEnmZevn74SZxv83yEQvLsnc4PS7Q
+```
+
+---
+
+## Appendix — earlier submission notes (kept verbatim)
+
 # SUBMISSION — Agent Week (hackalaunch.com/h/agent-week-2)
 
 ## Form fields
