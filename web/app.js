@@ -2,8 +2,29 @@
 
 const $ = (id) => document.getElementById(id);
 const APPROVER_KEY = 'agentproof.approver';
+const TOKEN_KEY = 'agentproof.token';
 
 let polling = null;
+
+/**
+ * The approval token arrives in the URL fragment (`#t=…`) of the link that
+ * `agentproof serve` prints. A fragment is never sent to the server and never
+ * leaks into a Referer, so we take it once, keep it for this tab only, and
+ * scrub it out of the address bar.
+ */
+function captureToken() {
+  const match = /[#&]t=([0-9a-f]{16,128})/i.exec(window.location.hash || '');
+  if (match) {
+    try { sessionStorage.setItem(TOKEN_KEY, match[1]); } catch { /* private mode */ }
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    return match[1];
+  }
+  try { return sessionStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; }
+}
+
+function sessionToken() {
+  try { return sessionStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; }
+}
 
 function el(tag, className, text) {
   const node = document.createElement(tag);
@@ -149,10 +170,13 @@ async function decide(intentHash, decision, buttons) {
   try {
     const res = await fetch('/api/decision', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'x-agentproof-token': sessionToken() },
       body: JSON.stringify({ intentHash, decision, approver }),
     });
     const data = await res.json();
+    if (res.status === 401) {
+      throw new Error('no session token — reopen the dashboard using the link printed by `agentproof serve`');
+    }
     if (!res.ok) throw new Error(data.error || `decision ${res.status}`);
     applyState(data.state);
   } catch (err) {
@@ -183,6 +207,10 @@ async function recheck() {
 }
 
 function boot() {
+  const token = captureToken();
+  if (!token) {
+    setVerdict('wait', 'read-only — reopen with the link printed by `agentproof serve` to approve');
+  }
   const saved = localStorage.getItem(APPROVER_KEY);
   if (saved) $('approver').value = saved;
   $('recheck').addEventListener('click', recheck);

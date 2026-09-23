@@ -1,5 +1,17 @@
 # End-to-end transcript (real run, local Solana validator)
 
+**You do not have to trust this paste.** The same sequence is a script:
+
+```bash
+bash examples/localnet-roundtrip.sh
+# RPC_PORT=8999 FAUCET_PORT=9999 bash examples/localnet-roundtrip.sh   # if a validator is already up
+```
+
+It funds the anchor key at genesis rather than through a faucet, so it runs
+offline and cannot be rate-limited, and it exits non-zero unless the tamper
+case really produces `RESULT: FAILED`. Hashes and signatures below differ from
+run to run — the *shape* is what is being shown.
+
 Captured while building agentproof. Environment:
 
 ```
@@ -110,7 +122,7 @@ is already on chain. Restoring the original line returns `RESULT: VERIFIED`.
 
 ```
 $ npm test
-ℹ tests 43
-ℹ pass 43
+ℹ tests 48
+ℹ pass 48
 ℹ fail 0
 ```

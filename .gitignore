@@ -12,6 +12,12 @@ id.json
 *.pem
 *.key
 
-# Demo artefacts (demo.mp4 is committed: 10.6 MB, well under GitHub's limit)
+# Demo artefacts. demo_small.mp4 (720p, 3.4 MB) IS committed — it is the file
+# to upload and the one a judge can play. The 1080p master demo.mp4 (10.6 MB)
+# is not: 14 MB of video was most of the clone.
+demo.mp4
 demo-frames/
 *.log
+
+# Internal QA reviews stay on the build machine, not in the public submission
+REVIEW_*.md

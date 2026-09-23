@@ -5,12 +5,30 @@
  * shows what the agent wants to do and lets a person approve or refuse, and
  * every decision is appended to the same hash chain the agent writes to.
  *
- * There is deliberately no auth token and no remote binding — the correct
- * deployment is "on the operator's own machine", and anything else would be a
- * security claim this project does not want to make.
+ * Trust boundary (read this before trusting an approval):
+ *
+ *   The decision endpoint is the one place where a *human* claim enters the
+ *   chain, so it is the one place worth attacking. Two controls guard it:
+ *
+ *   1. A per-session token, generated when `serve` starts and printed to the
+ *      operator's terminal. `POST /api/decision` requires it in the
+ *      `x-agentproof-token` header, compared in constant time.
+ *   2. Host and Origin pinning to loopback, so a page on another origin (or a
+ *      DNS-rebinding attempt) cannot drive the endpoint from the operator's
+ *      own browser.
+ *
+ *   What this does NOT defend against, stated plainly: an agent running as the
+ *   same OS user as the dashboard can read the operator's terminal, the process
+ *   environment, or simply start its own `serve` with a token it chose. The
+ *   token raises the cost of a self-approval from "one unauthenticated curl" to
+ *   "read the operator's session", but the only real boundary is running the
+ *   dashboard as a different OS user, or on a different machine, from the agent
+ *   it gates. `AGENTPROOF_TOKEN` exists so the operator can set the token out
+ *   of band in exactly that split deployment.
  */
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Ledger } from './ledger.js';
@@ -19,6 +37,43 @@ import { DEVNET_RPC, connect, explorerUrl, fetchAnchor } from './anchor.js';
 const WEB_DIR = fileURLToPath(new URL('../web/', import.meta.url));
 const MIME = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.svg': 'image/svg+xml' };
 const MAX_BODY_BYTES = 64 * 1024;
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
+
+/** A fresh per-session approval token. */
+export function generateToken() {
+  return randomBytes(24).toString('hex');
+}
+
+/** Constant-time string compare that does not leak length through timing paths. */
+function tokenMatches(expected, given) {
+  if (typeof given !== 'string' || given.length === 0) return false;
+  const a = Buffer.from(String(expected), 'utf8');
+  const b = Buffer.from(given, 'utf8');
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+function hostname(value) {
+  if (typeof value !== 'string' || value.length === 0) return null;
+  const withoutPort = value.startsWith('[') ? value.slice(0, value.indexOf(']') + 1) : value.split(':')[0];
+  return withoutPort.toLowerCase();
+}
+
+/**
+ * True when the request really came from a page on this loopback server.
+ * A missing Origin (curl, the CLI, a fetch from the page itself in some
+ * browsers) is allowed; a *wrong* Origin never is.
+ */
+function isLoopbackRequest(req) {
+  if (!LOOPBACK_HOSTS.has(hostname(req.headers.host))) return false;
+  const origin = req.headers.origin;
+  if (origin === undefined || origin === 'null') return true;
+  try {
+    return LOOPBACK_HOSTS.has(new URL(origin).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
 
 function sendJson(res, status, payload) {
   const body = JSON.stringify(payload);
@@ -79,11 +134,14 @@ async function serveStatic(res, urlPath) {
   }
 }
 
-export function createApp(dir) {
+export function createApp(dir, { token = null } = {}) {
   const ledger = new Ledger(dir);
   return async (req, res) => {
     try {
       const url = new URL(req.url, 'http://127.0.0.1');
+      if (!isLoopbackRequest(req)) {
+        return sendJson(res, 403, { error: 'this dashboard only answers loopback requests' });
+      }
       if (req.method === 'GET' && url.pathname === '/api/state') {
         return sendJson(res, 200, buildState(ledger));
       }
@@ -118,6 +176,11 @@ export function createApp(dir) {
         }
       }
       if (req.method === 'POST' && url.pathname === '/api/decision') {
+        if (token && !tokenMatches(token, req.headers['x-agentproof-token'])) {
+          return sendJson(res, 401, {
+            error: 'missing or wrong session token — open the dashboard with the link printed by `agentproof serve`',
+          });
+        }
         const body = await readBody(req);
         const { intentHash, decision, approver, note } = body;
         if (typeof intentHash !== 'string' || !/^[0-9a-f]{64}$/.test(intentHash)) {
@@ -144,12 +207,23 @@ export function createApp(dir) {
   };
 }
 
-export function startServer({ dir, port = 4319, host = '127.0.0.1' } = {}) {
-  const server = createServer(createApp(dir));
+/**
+ * Start the dashboard. A per-session token is generated unless one is supplied
+ * (`AGENTPROOF_TOKEN` for a split deployment, or `token: false` — no auth at
+ * all — which exists only for tests that exercise the legacy path).
+ */
+export function startServer({ dir, port = 4319, host = '127.0.0.1', token } = {}) {
+  const sessionToken = token === undefined ? process.env.AGENTPROOF_TOKEN || generateToken() : token;
+  const server = createServer(createApp(dir, { token: sessionToken || null }));
   return new Promise((resolvePromise, reject) => {
     server.once('error', reject);
     server.listen(port, host, () => {
-      resolvePromise({ server, port: server.address().port, close: () => new Promise((r) => server.close(r)) });
+      resolvePromise({
+        server,
+        port: server.address().port,
+        token: sessionToken || null,
+        close: () => new Promise((r) => server.close(r)),
+      });
     });
   });
 }

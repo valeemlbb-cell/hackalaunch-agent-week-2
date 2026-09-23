@@ -1,13 +1,17 @@
 # agentproof
 
-**Tamper-evident receipts and a human-approval gate for autonomous AI agents, anchored on Solana devnet.**
+**Tamper-evident receipts and a human-approval gate for autonomous AI agents, anchored on Solana.**
 
 Submitted to [Agent Week](https://hackalaunch.com/h/agent-week-2) on HackaLaunch.
 
-**Demo video (2:01, 1080p): [`demo.mp4`](demo.mp4)** — committed in this repo.
-It is a real screen recording: the terminal segments replay captured CLI output
-verbatim, and the dashboard segment is the actual page being driven in a
-headless Chromium against a live server and a live Solana validator.
+## See it in 30 seconds
+
+* **Watch:** demo video, 2:01 — `<DEMO_URL>` *(public link goes here at submission; the same recording is committed as [`demo_small.mp4`](demo_small.mp4), 3.4 MB)* — the gate stopping an agent mid-run, then the anchor and the tamper check.
+* **Run the whole claim yourself:** `bash examples/localnet-roundtrip.sh` — starts a validator, hits the gate, anchors on chain, reads it back, tampers with the log and shows it caught. About a minute, no faucet, no keys of yours.
+* **Just the tests:** `npm install && npm test` → 48 passing, no network.
+* **The one-line pitch:** an agent's own log proves nothing; this makes the log unforgeable and puts a human in front of anything that spends, sends, publishes or deletes.
+* **Honest status:** verified end to end on a real Solana validator (localnet — the public devnet faucet was 429 all build window). Details under [Verification status](#verification-status--read-this-honestly).
+* **Files worth opening first:** [`src/ledger.js`](src/ledger.js) (the gate + the offline audit), [`src/anchor.js`](src/anchor.js) (Memo anchoring, mainnet refused).
 
 ---
 
@@ -67,9 +71,9 @@ program would add surface area without adding a guarantee.
 
 ```bash
 npm install
-npm test                       # 43 tests, no network needed
+npm test                       # 48 tests, no network needed
 node examples/warung-agent-demo.js --dir .agentproof --reset
-npx agentproof serve --dir .agentproof     # http://127.0.0.1:4319
+npx agentproof serve --dir .agentproof     # prints the dashboard link + session token
 ```
 
 The demo runs a seven-step agent pipeline. Four steps run freely; three
@@ -146,22 +150,33 @@ no code path in this repository that can touch mainnet.
 
 ## Verification status — read this honestly
 
-**What was verified end to end, for real:** the complete round trip — build
-batch → send SPL Memo transaction → read the transaction back off chain →
-compare the re-derived Merkle root — was executed against a real Solana
-validator (`solana-test-validator`, Agave 2.1.5, localnet), including the
-negative case where an edited ledger correctly reports `MISMATCH`. The captured
-terminal transcript is in
-[`examples/localnet-transcript.md`](examples/localnet-transcript.md).
+**Verified on a real validator; devnet signature pending.** The complete round
+trip — build batch → send SPL Memo transaction → read the transaction back off
+chain → compare the re-derived Merkle root → tamper with a past line and watch
+it fail — runs against a real Solana validator, including the negative case.
+You do not have to take our word for any of it:
 
-**What is not in this repo:** a devnet transaction signature. The public devnet
-faucet was returning HTTP 429 ("airdrop limit reached / faucet has run dry")
-for the whole build window, so the anchor keypair could not be funded, and
-`faucet.solana.com` needs a human to pass a captcha. The code path is identical
-— only the RPC URL differs — but we are not going to claim a devnet anchor we
-did not produce. Fund the key and run `npx agentproof anchor` and you will get
-one; `examples/sample-ledger/anchors.jsonl` is deliberately absent rather than
-faked.
+```bash
+bash examples/localnet-roundtrip.sh          # ~1 minute, no faucet, no captcha
+# add RPC_PORT=8999 FAUCET_PORT=9999 if you already have a validator running
+```
+
+The script starts `solana-test-validator`, funds an anchor key **at genesis**
+(so no faucet can rate-limit it), runs the agent into the gate, approves one
+intent, anchors, verifies online (`RESULT: VERIFIED`, exit `0`), proves one
+event's inclusion, then rewrites a past cost and shows both detections fire —
+chain `BROKEN` *and* anchor `MISMATCH`, exit `4`. A captured run of the same
+sequence is in [`examples/localnet-transcript.md`](examples/localnet-transcript.md).
+
+**What is not in this repo: a devnet transaction signature.** The public devnet
+faucet returned HTTP 429 ("airdrop limit reached / faucet has run dry") for the
+whole build window, and `faucet.solana.com` needs a human to pass a captcha,
+which the agent that built this is not allowed to do. The code path is
+identical — only the RPC URL differs, and `src/anchor.js` accepts devnet,
+testnet and localnet alike. We are not going to paste a devnet signature we did
+not produce: `examples/sample-ledger/anchors.jsonl` is deliberately absent
+rather than faked. Fund the key, run `npx agentproof anchor`, and the same
+transcript appears with a link an explorer will resolve.
 
 **What is simulated:** `examples/warung-agent-demo.js` replays a real pipeline's
 shape (fetch episode → transcribe → rank clips → caption → pay for GPU → email
@@ -197,14 +212,46 @@ estimated.
 Fitting, given the subject: the first thing this tool is useful for is keeping
 agents like the one that wrote it honest.
 
+## Trust boundary — who can approve
+
+The approval endpoint is the one place a *human* claim enters the chain, so it
+is the one place worth attacking. An unauthenticated localhost endpoint would
+mean the agent being gated could `curl` its own approval and produce a
+cryptographically perfect but attributively false chain entry. Two controls
+guard it:
+
+1. **A per-session token.** `agentproof serve` generates one at start and
+   prints it, along with a ready-made link that carries it in the URL
+   *fragment* (so it is never sent to the server, logged, or put in a
+   `Referer`). `POST /api/decision` requires it in `x-agentproof-token` and
+   compares it in constant time. Without it: `401`, and nothing is appended.
+2. **Loopback pinning.** `Host` must be loopback and any `Origin` present must
+   be loopback too, so neither a page on another site nor a DNS-rebinding
+   attempt can drive the endpoint from the operator's own browser. Otherwise:
+   `403`.
+
+**What this does not defend against, stated plainly:** an agent running as the
+same OS user can read the operator's terminal, read the process environment, or
+start its own `serve` with a token it chose. The token turns a self-approval
+from "one unauthenticated request" into "compromise the operator's session" —
+it does not make it impossible. The only real boundary is running the dashboard
+as a **different OS user, or on a different machine**, from the agent it gates;
+`AGENTPROOF_TOKEN` exists so the operator can set the token out of band in
+exactly that deployment. Five tests cover the refusals
+([`test/server.test.js`](test/server.test.js)).
+
+Note what does *not* change under any of this: the gate is also re-checked
+offline by `audit()`, so even a fully compromised runtime cannot produce a
+ledger that passes verification without an attributable approval event.
+
 ## Security notes
 
 * No private keys, seed phrases or API keys are in this repository. The anchor
   keypair is loaded from a path given by `AGENTPROOF_KEYPAIR` at runtime and
   must live outside the repo; `.gitignore` blocks `*keypair*.json` anyway.
-* The dashboard binds `127.0.0.1` only, has no authentication, and is not
-  intended to be exposed. It exposes no endpoint that can execute an agent
-  action — only approve/reject, which is the human side of the gate.
+* The dashboard binds `127.0.0.1` only and is not intended to be exposed. It
+  exposes no endpoint that can execute an agent action — only approve/reject,
+  which is the human side of the gate, and that one is token-gated (above).
 * Request bodies are capped at 64 KiB, the approval endpoint validates the
   intent hash shape, the approver name and the decision verb, and static file
   serving refuses path traversal (covered by tests).
@@ -223,7 +270,7 @@ src/server.js      localhost approval dashboard (API + static)
 src/cli.js         agentproof CLI
 web/               dashboard — no framework, no build step
 examples/          demo agent run + committed sample ledger + transcript
-test/              43 tests (node:test)
+test/              48 tests (node:test)
 ```
 
 ## Licence

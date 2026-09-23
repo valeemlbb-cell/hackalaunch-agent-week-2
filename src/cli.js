@@ -233,7 +233,18 @@ export async function run(argv) {
     case 'serve': {
       const port = Number(flags.port || process.env.AGENTPROOF_PORT || 4319);
       const server = await startServer({ dir: ledger.dir, port });
-      console.log(`agentproof dashboard on http://127.0.0.1:${server.port} (ledger: ${ledger.dir})`);
+      const base = `http://127.0.0.1:${server.port}`;
+      console.log(`agentproof dashboard on ${base} (ledger: ${ledger.dir})`);
+      if (server.token) {
+        // The token travels in the URL *fragment*, so it is never sent to the
+        // server, never lands in a log, and is never carried in a Referer.
+        console.log(`\n  open this link — it carries the approval token for this session:\n`);
+        console.log(`  ${base}/#t=${server.token}\n`);
+        console.log(`  token: ${server.token}`);
+        console.log('  Approvals require it. Anything that can read this terminal can');
+        console.log('  approve as you — run this dashboard as a different OS user than the');
+        console.log('  agent if that matters to you (see README → Trust boundary).');
+      }
       return null; // keep running
     }
 

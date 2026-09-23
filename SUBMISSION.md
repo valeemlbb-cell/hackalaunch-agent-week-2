@@ -6,13 +6,15 @@
 |---|---|
 | Project name | **agentproof** |
 | Public GitHub repository | `https://github.com/valeemlbb-cell/hackalaunch-agent-week-2` |
-| Demo video (public link) | `<DEMO_URL>` — upload `demo_small.mp4` (720p, 3.4 MB, 2:01) to X @issue0x or YouTube, then paste the link |
+| Demo video (public link) | **`<DEMO_URL>` — NOT YET SET.** Upload `demo_small.mp4` (720p, 3.4 MB, 2:01) to X @issue0x or YouTube, paste the link here and in the description below. `grep -rn '<DEMO_URL>' README.md SUBMISSION.md` must return nothing before you submit. |
 | Short description | the block under **Description** below |
 | Solana payout address | `7W31iaCmjerN1jkpEnmZevn74SZxv83yEQvLsnc4PS7Q` |
 
-Local artefacts: `D:\warung-ops\hacka\agent-week-2\demo.mp4` (1080p, 10.6 MB, committed),
-`demo_small.mp4` (720p, 3.4 MB — under X's upload limit; runtime 121 s is under X's
-2 min 20 s non-premium cap).
+Local artefacts: `demo_small.mp4` (720p, 3.4 MB, 2:01) is committed and is the
+file to upload — under X's size limit, and its 121 s runtime is under the
+2 min 20 s non-premium cap. The 1080p master `demo.mp4` (10.6 MB) stays on the
+build machine at `D:\warung-ops\hacka\agent-week-2\demo.mp4` and is no longer
+tracked in git: 14 MB of video was most of the clone.
 
 ## One-paragraph description
 
@@ -30,7 +32,7 @@ comparing it with the chain turns "trust my log" into a check anyone can run.
 **During Agent Week (everything in the repo):** the hash-chain ledger, the
 canonical event encoding, the Merkle tree and inclusion proofs, the policy
 engine and approval gate, the offline auditor, the Solana anchor/verify path,
-the CLI, the localhost approval dashboard, 43 tests, README, and the demo.
+the CLI, the localhost approval dashboard, 48 tests, README, and the demo.
 
 **Before the hackathon (NOT in the repo, not imported):** our in-house clip
 pipeline at `D:\warung-ops`, which is only the *story* behind
@@ -43,14 +45,14 @@ pre-hackathon code, assets or dependencies were copied in.
 | Requirement | How it is met |
 |---|---|
 | Public GitHub repository | `https://github.com/valeemlbb-cell/hackalaunch-agent-week-2`, MIT licence, README at root |
-| Demo video ≤ 3 minutes | 2:01, 1080p, English voice-over, real terminal + real dashboard, no slides |
+| Demo video ≤ 3 minutes | 2:01, English voice-over, real terminal + real dashboard, no slides; `demo_small.mp4` (720p) committed, 1080p master held locally |
 | Description | above |
 | An agent-related build | the project exists only to make agent actions gateable and auditable; the demo drives a seven-step agent run |
 | Solana | anchoring writes a Merkle root to Solana via SPL Memo (`MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`); `verify --online` reads it back |
 | Devnet only, no mainnet money | the RPC endpoint is checked and any non-devnet/testnet/localnet URL is refused; a test covers the refusal |
 | No secrets in the repo | `.env.example` only; `.gitignore` blocks `*keypair*.json`, `id.json`, `*.pem`, `*.key`, `.env` |
 | No admin backdoor | there is no override path around the gate; the offline auditor re-checks the gate from the raw file, so a patched runtime still leaves a provable `ungated_execution` violation |
-| Human approval on anything outbound | `spend`, `outbound`, `publish`, `credential`, `destructive` are gated by default and unknown kinds fail closed |
+| Human approval on anything outbound | `spend`, `outbound`, `publish`, `credential`, `destructive` are gated by default and unknown kinds fail closed; the approval endpoint itself needs a per-session token printed to the operator's terminal, so the gated agent cannot approve itself over loopback |
 | Licensing | MIT; no bundled fonts or art |
 | AI disclosure | stated in the README and in the description |
 
@@ -90,8 +92,16 @@ the raw file — so an agent patched to skip the runtime check still leaves a
 provable `ungated_execution` violation.
 
 **What is in the repo:** a CLI, a library, and a localhost-only approval
-dashboard (no framework, no build step). 43 tests, all passing, no network
+dashboard (no framework, no build step). 48 tests, all passing, no network
 needed to run them. MIT licence, no fonts or art bundled.
+
+**The gate defends against the agent it gates.** Approving requires a
+per-session token that `serve` prints to the operator's terminal, and the
+endpoint pins Host and Origin to loopback — otherwise an agent that can spawn a
+process could curl its own approval and leave a cryptographically perfect but
+attributively false entry. The README states plainly what that does and does
+not buy: the only real boundary is running the dashboard as a different OS user
+than the agent.
 
 **Solana:** devnet only. No program deployed, no mints; anchoring uses SPL Memo
 (`MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr`) because the only claim needed
@@ -102,9 +112,12 @@ that is not devnet/testnet/localnet, and that refusal is covered by a test.
 round trip — anchor, read back off chain, match, and the negative case where an
 edited ledger fails — was verified against a real Solana validator, but a
 *local* one: the public devnet faucet returned HTTP 429 for the entire build
-window, so the anchor key could not be funded. Same code path, one RPC URL
-apart. We did not fabricate a devnet signature; the transcript is in
-`examples/localnet-transcript.md`.
+window, so the anchor key could not be funded and its captcha needs a human.
+Same code path, one RPC URL apart. We did not fabricate a devnet signature.
+Rather than ask you to trust a paste, the run is a script:
+`bash examples/localnet-roundtrip.sh` boots a validator, funds the key at
+genesis, drives the gate, anchors, verifies (exit 0), then tampers with a past
+line and exits 4. About a minute, no faucet involved.
 
 **AI disclosure:** built by a human operator working with Claude as a coding
 agent. Architecture, threat model and every factual claim above were reviewed
