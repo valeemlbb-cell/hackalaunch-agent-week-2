@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "gatedKinds": [
+    "outbound",
+    "spend",
+    "credential",
+    "publish",
+    "destructive"
+  ],
+  "openKinds": [
+    "tool_call",
+    "note",
+    "observation",
+    "draft"
+  ],
+  "overrides": {}
+}

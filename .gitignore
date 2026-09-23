@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.*
+!.env.example
+
+# Runtime ledgers (the committed one under examples/ is deliberate)
+.agentproof/
+
+# Key material must never enter this repo
+*keypair*.json
+id.json
+*.pem
+*.key
+
+# Demo artefacts (demo.mp4 is committed: 10.6 MB, well under GitHub's limit)
+demo-frames/
+*.log

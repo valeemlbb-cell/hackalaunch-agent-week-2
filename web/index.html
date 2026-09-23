@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>agentproof — control tape</title>
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+<div class="grain" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="mark" aria-hidden="true"></span>
+    <div>
+      <h1>agentproof</h1>
+      <p class="sub">receipts &amp; approval gate · <span id="cluster">solana</span></p>
+    </div>
+  </div>
+  <div class="verdict" id="verdict" data-state="unknown">
+    <span class="dot" aria-hidden="true"></span>
+    <span id="verdict-text">checking…</span>
+  </div>
+</header>
+
+<main>
+  <section class="stats" aria-label="Ledger summary">
+    <div class="stat"><span class="k" id="s-events">–</span><span class="l">events</span></div>
+    <div class="stat"><span class="k" id="s-gated">–</span><span class="l">gated intents</span></div>
+    <div class="stat"><span class="k" id="s-approved">–</span><span class="l">approved</span></div>
+    <div class="stat"><span class="k" id="s-rejected">–</span><span class="l">refused</span></div>
+    <div class="stat accent"><span class="k" id="s-pending">–</span><span class="l">waiting on you</span></div>
+  </section>
+
+  <div class="columns">
+    <section class="panel gate" aria-labelledby="gate-h">
+      <div class="panel-head">
+        <h2 id="gate-h">Approval gate</h2>
+        <p>The agent has stopped here. Nothing below runs until a human decides.</p>
+      </div>
+      <label class="who">
+        <span>signing as</span>
+        <input id="approver" type="text" autocomplete="off" spellcheck="false" placeholder="your name" />
+      </label>
+      <ul class="queue" id="queue"></ul>
+      <p class="empty" id="queue-empty" hidden>Queue clear. The agent is free to run its open actions.</p>
+    </section>
+
+    <section class="panel tape" aria-labelledby="tape-h">
+      <div class="panel-head">
+        <h2 id="tape-h">Proof tape</h2>
+        <p>Append-only hash chain. Every line commits to the one above it.</p>
+      </div>
+      <ol class="events" id="events"></ol>
+    </section>
+  </div>
+
+  <section class="panel anchors" aria-labelledby="anchor-h">
+    <div class="panel-head row">
+      <div>
+        <h2 id="anchor-h">On-chain anchors</h2>
+        <p>One Merkle root per batch, written to Solana as an SPL memo.</p>
+      </div>
+      <button id="recheck" type="button" class="btn">Re-verify on-chain</button>
+    </div>
+    <div id="anchors" class="anchor-list"></div>
+    <p class="empty" id="anchors-empty" hidden>No anchors yet — run <code>agentproof anchor</code>.</p>
+  </section>
+</main>
+
+<footer>
+  <p>Never mainnet. No key material is read by this page; anchoring happens in the CLI.</p>
+</footer>
+
+<script src="/app.js" type="module"></script>
+</body>
+</html>

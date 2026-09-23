@@ -1,0 +1,22 @@
+{
+  "name": "agentproof",
+  "version": "0.1.0",
+  "description": "Tamper-evident receipts and a human-approval gate for autonomous AI agents, anchored on Solana devnet.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "agentproof": "./src/cli.js"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\"",
+    "demo": "node examples/warung-agent-demo.js",
+    "serve": "node src/cli.js serve",
+    "verify": "node src/cli.js verify"
+  },
+  "dependencies": {
+    "@solana/web3.js": "^1.95.3"
+  }
+}
